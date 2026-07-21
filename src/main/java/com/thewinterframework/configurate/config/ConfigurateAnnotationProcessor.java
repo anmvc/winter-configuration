@@ -29,12 +29,6 @@ public class ConfigurateAnnotationProcessor implements WinterAnnotationProcessor
     }
 
     @Override
-    public void onRoundStart(final ProcessorContext ctx) {
-        ctx.wireModule(ConfigurateModule.class);
-        ctx.wireModule(getModulePackage(ctx) + ".ConfigurationsModule");
-    }
-
-    @Override
     public void handle(final TypeElement annotation, final Set<? extends Element> elements, final ProcessorContext ctx) {
         final var validElements = elements.stream()
                 .filter(e -> e.getKind() == ElementKind.CLASS || e.getKind() == ElementKind.RECORD)
@@ -43,6 +37,9 @@ public class ConfigurateAnnotationProcessor implements WinterAnnotationProcessor
         if (validElements.isEmpty()) {
             return;
         }
+
+        ctx.wireModule(ConfigurateModule.class);
+        ctx.wireModule(getModulePackage(ctx) + ".ConfigurationsModule");
 
         final var pkg = getModulePackage(ctx);
         final var className = "ConfigurationsModule";
