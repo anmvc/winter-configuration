@@ -92,12 +92,18 @@ final class EnvironmentVariables {
 				preserveExpressions(entry.getValue(), previous.node(entry.getKey()), updated.node(entry.getKey()));
 			}
 		} else if (original.isList() && previous.isList() && updated.isList()) {
+			// Pair elements by value, so inserting or removing elements cannot move a reference onto another element.
 			final var originals = original.childrenList();
 			final var previousValues = previous.childrenList();
-			final var updatedValues = updated.childrenList();
-			final var size = Math.min(originals.size(), Math.min(previousValues.size(), updatedValues.size()));
-			for (int i = 0; i < size; i++) {
-				preserveExpressions(originals.get(i), previousValues.get(i), updatedValues.get(i));
+			final var used = new boolean[previousValues.size()];
+			for (final var updatedValue : updated.childrenList()) {
+				for (int i = 0; i < previousValues.size() && i < originals.size(); i++) {
+					if (!used[i] && ConfigurationValues.sameValue(previousValues.get(i), updatedValue)) {
+						used[i] = true;
+						preserveExpressions(originals.get(i), previousValues.get(i), updatedValue);
+						break;
+					}
+				}
 			}
 		} else if (original.rawScalar() instanceof String value
 				&& EXPRESSION.matcher(value).find()

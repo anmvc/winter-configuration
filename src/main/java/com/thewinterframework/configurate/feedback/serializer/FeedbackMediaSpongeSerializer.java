@@ -14,7 +14,9 @@ import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
 
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.Locale;
 
 @ConfigurateSerializer
 public class FeedbackMediaSpongeSerializer implements TypeSerializer<FeedbackMedia> {
@@ -32,16 +34,40 @@ public class FeedbackMediaSpongeSerializer implements TypeSerializer<FeedbackMed
     @Override
     public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
         final var typeNode = node.node("type");
-        if (typeNode.empty() || typeNode.virtual()) {
+        if (typeNode.virtual() || typeNode.raw() == null) {
+            // Without a type, the value is a chat message: a string, a list of strings, or a map with a "message".
             if (node.isList()) {
                 return new ChatMedia(node.getList(String.class));
             }
+            if (node.isMap()) {
+                return CHILD_SERIALIZERS.get(MediaType.CHAT).deserialize(type, node);
+            }
 
-            return new ChatMedia(node.getString(node.path().toString()));
+            final var message = node.getString();
+            if (message == null) {
+                throw new SerializationException(node, type, "Expected a chat message, a list of messages, or a map with a 'type'");
+            }
+            return new ChatMedia(message);
         }
 
-        final var mediaType = MediaType.valueOf(typeNode.getString(MediaType.CHAT.toString()).toUpperCase());
-        return CHILD_SERIALIZERS.get(mediaType).deserialize(type, node);
+        final var typeName = typeNode.getString();
+        if (typeName == null) {
+            throw new SerializationException(typeNode, type, "Expected a single value for 'type'");
+        }
+
+        final MediaType mediaType;
+        try {
+            mediaType = MediaType.valueOf(typeName.strip().toUpperCase(Locale.ROOT));
+        } catch (final IllegalArgumentException exception) {
+            throw new SerializationException(typeNode, type, "Unknown feedback type '" + typeName + "', expected one of "
+                    + Arrays.toString(MediaType.values()));
+        }
+
+        final var serializer = CHILD_SERIALIZERS.get(mediaType);
+        if (serializer == null) {
+            throw new SerializationException(typeNode, type, "Feedback type '" + typeName + "' cannot be deserialized");
+        }
+        return serializer.deserialize(type, node);
     }
 
     @Override

@@ -26,11 +26,11 @@ public class ConfigurationsModule extends AbstractModule implements PluginModule
     @Override
     protected void configure() {
         <el>
-                bind(new TypeLiteral<Container<<CONFIG_OBJECT>>>() {}).toProvider(<CONFIG_NAME>ContainerProvider.class).asEagerSingleton();
+                bind(new TypeLiteral<Container<<CONFIG_OBJECT>>>() {}).toProvider(<CONFIG_IDENTIFIER>ContainerProvider.class).asEagerSingleton();
         </el>
     }
     <el>
-    private static class <CONFIG_NAME>ContainerProvider implements Provider<Container<<CONFIG_OBJECT>>> {
+    private static class <CONFIG_IDENTIFIER>ContainerProvider implements Provider<Container<<CONFIG_OBJECT>>> {
 
         private final WinterPlugin plugin;
         private final Logger logger;
@@ -39,7 +39,7 @@ public class ConfigurationsModule extends AbstractModule implements PluginModule
         private final com.thewinterframework.service.ReloadServiceManager reloadManager;
 
         @Inject
-        public <CONFIG_NAME>ContainerProvider(WinterPlugin plugin, Logger logger, @DataFolder Path dataFolder, ConfigurateSerializersRegistry registry, com.thewinterframework.service.ReloadServiceManager reloadManager) {
+        public <CONFIG_IDENTIFIER>ContainerProvider(WinterPlugin plugin, Logger logger, @DataFolder Path dataFolder, ConfigurateSerializersRegistry registry, com.thewinterframework.service.ReloadServiceManager reloadManager) {
             this.plugin = plugin;
             this.logger = logger;
             this.dataFolder = dataFolder;
@@ -57,8 +57,10 @@ public class ConfigurationsModule extends AbstractModule implements PluginModule
                         options -> options.serializers(builder -> builder.registerAll(registry.getSerializers()))
                 );
 
-                reloadManager.addOnReload(com.thewinterframework.configurate.module.ConfigurateModule.class, container::reload);
                 plugin.getExpressionResolver().addContext("<CONFIG_NAME>", container.get());
+                // Keep the expression context on the current object after reloads and updates.
+                container.addChangeListener(config -> plugin.getExpressionResolver().addContext("<CONFIG_NAME>", config));
+                reloadManager.addOnReload(com.thewinterframework.configurate.module.ConfigurateModule.class, container::reload);
                 return container;
             } catch (Exception e) {
                 throw new ProvisionException("Error while loading <CONFIG_NAME>", e);

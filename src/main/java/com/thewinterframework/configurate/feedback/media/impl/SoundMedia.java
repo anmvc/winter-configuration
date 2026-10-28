@@ -1,8 +1,10 @@
 package com.thewinterframework.configurate.feedback.media.impl;
 
 import com.thewinterframework.configurate.feedback.media.FeedbackMedia;
+import com.thewinterframework.configurate.feedback.media.MediaNodes;
 import com.thewinterframework.configurate.feedback.media.MediaType;
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.key.InvalidKeyException;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.sound.Sound.Emitter;
@@ -12,9 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
-
 import java.lang.reflect.Type;
-import java.util.Objects;
 
 public record SoundMedia(Sound sound) implements FeedbackMedia {
     @Override
@@ -28,16 +28,27 @@ public record SoundMedia(Sound sound) implements FeedbackMedia {
     }
 
     public static class SoundMediaSerializer implements TypeSerializer<FeedbackMedia> {
-        @Override @SuppressWarnings("all")
-        public FeedbackMedia deserialize(Type type, ConfigurationNode node) throws SerializationException {;
-            return new SoundMedia(
-                    Sound.sound(
-                            Key.key(Objects.requireNonNull(node.node("name").getString())),
-                            Source.valueOf(node.node("source").getString(Source.MASTER.toString()).toUpperCase()),
-                            node.node("volume").getFloat(1.0f),
-                            node.node("pitch").getFloat(1.0f)
-                    )
-            );
+        @Override
+        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
+            final var name = MediaNodes.requiredString(node, "name", type);
+            final Key key;
+            try {
+                key = Key.key(name);
+            } catch (final InvalidKeyException exception) {
+                throw new SerializationException(node.node("name"), type, "Invalid sound name '" + name + "': " + exception.getMessage());
+            }
+
+            final var source = MediaNodes.enumValue(node, "source", Source.class, Source.MASTER, type);
+            final var volume = node.node("volume").getFloat(1.0f);
+            final var pitch = node.node("pitch").getFloat(1.0f);
+            if (!(volume >= 0f)) {
+                throw new SerializationException(node.node("volume"), type, "Sound volume must not be negative, but was " + volume);
+            }
+            if (!(pitch >= 0f)) {
+                throw new SerializationException(node.node("pitch"), type, "Sound pitch must not be negative, but was " + pitch);
+            }
+
+            return new SoundMedia(Sound.sound(key, source, volume, pitch));
         }
 
         @Override

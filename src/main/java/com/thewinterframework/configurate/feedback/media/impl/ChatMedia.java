@@ -40,11 +40,18 @@ public record ChatMedia(List<String> messages) implements FeedbackMedia {
         @Override
         public FeedbackMedia deserialize(@NotNull final Type type, final ConfigurationNode node) throws SerializationException {
             final var msgNode = node.node("message");
+            if (msgNode.virtual() || msgNode.raw() == null) {
+                throw new SerializationException(node, type, "Chat feedback requires a 'message'");
+            }
             if (msgNode.isList()) {
                 return new ChatMedia(msgNode.getList(String.class));
             }
 
-            return new ChatMedia(msgNode.getString(msgNode.path().toString()));
+            final var message = msgNode.getString();
+            if (message == null) {
+                throw new SerializationException(msgNode, type, "Expected a string or a list of strings for 'message'");
+            }
+            return new ChatMedia(message);
         }
 
         @Override

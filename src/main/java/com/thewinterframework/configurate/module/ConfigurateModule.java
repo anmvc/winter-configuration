@@ -20,6 +20,9 @@ import org.spongepowered.configurate.serialize.TypeSerializer;
 import org.spongepowered.configurate.serialize.TypeSerializerCollection;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -50,6 +53,9 @@ public class ConfigurateModule implements ProcessorModule {
             for (final var discoveredSerializer : serializerWire.getWiredClasses()) {
                 final var instance = discoveredSerializer.getDeclaredConstructor().newInstance();
                 final var type = Reflections.getGenericType(discoveredSerializer, TypeSerializer.class, 0);
+                if (type == null) {
+                    throw new IllegalStateException("Serializer " + discoveredSerializer.getName() + " must implement TypeSerializer<T> with a concrete type T");
+                }
                 registry.registerSerializer(type, (TypeSerializer<?>) instance);
             }
 
@@ -61,10 +67,10 @@ public class ConfigurateModule implements ProcessorModule {
                 for (final var method : provider.getDeclaredMethods()) {
                     if (method.isAnnotationPresent(ConfigurateSerializer.class)) {
                         final var returnType = method.getReturnType();
+                        method.setAccessible(true);
                         if (TypeSerializer.class.isAssignableFrom(returnType)) {
-                            method.setAccessible(true);
                             final var serializer = (TypeSerializer<?>) method.invoke(instance);
-                            this.registry.registerSerializer(Reflections.getGenericType(returnType, TypeSerializer.class, 0), serializer);
+                            this.registry.registerSerializer(serializedType(method), serializer);
                         } else if (TypeSerializerCollection.class.isAssignableFrom(returnType)) {
                             this.registry.registerCollection((TypeSerializerCollection) method.invoke(instance));
                         }
@@ -109,6 +115,23 @@ public class ConfigurateModule implements ProcessorModule {
         }
 
         return true;
+    }
+
+    /**
+     * Gets the type that a serializer provider method serializes, read from the method's generic return type,
+     * for example {@code Component} for {@code TypeSerializer<Component> componentSerializer()}.
+     *
+     * @param method the provider method
+     * @return the serialized type
+     * @throws IllegalStateException if the return type does not declare the serialized type
+     */
+    private static Type serializedType(final Method method) {
+        if (method.getGenericReturnType() instanceof final ParameterizedType parameterized
+                && parameterized.getActualTypeArguments().length == 1) {
+            return parameterized.getActualTypeArguments()[0];
+        }
+
+        throw new IllegalStateException("Serializer method " + method + " must return a TypeSerializer<T> with a concrete type T");
     }
 
     public void setLangFileName(final String langFileName) {

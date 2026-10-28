@@ -2,6 +2,7 @@ package com.thewinterframework.configurate.feedback.media.impl;
 
 import com.thewinterframework.component.ComponentUtils;
 import com.thewinterframework.configurate.feedback.media.FeedbackMedia;
+import com.thewinterframework.configurate.feedback.media.MediaNodes;
 import com.thewinterframework.configurate.feedback.media.MediaType;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
@@ -9,9 +10,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
-
 import java.lang.reflect.Type;
-import java.util.Objects;
 
 public record ActionBarMedia(String message) implements FeedbackMedia {
 
@@ -27,8 +26,8 @@ public record ActionBarMedia(String message) implements FeedbackMedia {
 
     public static class ActionBarMediaSerializer implements TypeSerializer<FeedbackMedia> {
         @Override
-        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) {
-            return new ActionBarMedia(Objects.requireNonNull(node.node("message").getString()));
+        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
+            return new ActionBarMedia(MediaNodes.requiredString(node, "message", type));
         }
 
         @Override
