@@ -9,8 +9,11 @@ import com.thewinterframework.processor.template.TemplateBuilder;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import java.lang.annotation.Annotation;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -35,9 +38,11 @@ public class ConfigurateAnnotationProcessor implements WinterAnnotationProcessor
 
     @Override
     public void handle(final TypeElement annotation, final Set<? extends Element> elements, final ProcessorContext ctx) {
-        final var validElements = elements.stream()
+        // Sorted, so the generated code does not change between builds.
+        final List<Element> validElements = elements.stream()
                 .filter(e -> e.getKind() == ElementKind.CLASS || e.getKind() == ElementKind.RECORD)
-                .collect(Collectors.toSet());
+                .sorted(Comparator.comparing(Element::toString))
+                .collect(Collectors.toList());
 
         if (validElements.isEmpty()) {
             return;
@@ -61,17 +66,33 @@ public class ConfigurateAnnotationProcessor implements WinterAnnotationProcessor
                         final var block = matcher.group(1);
                         final var builder = new StringBuilder();
 
-                        final var alreadyWritten = new HashSet<String>();
+                        final var fileNames = new HashMap<String, Element>();
+                        final var identifiers = new HashMap<String, Element>();
 
                         for (final var element : validElements) {
                             final var configAnnotation = element.getAnnotation(Configurate.class);
                             if (configAnnotation == null) continue;
 
                             final var fileName = configAnnotation.value();
-                            if (!alreadyWritten.add(fileName)) continue;
+                            final var previous = fileNames.putIfAbsent(fileName, element);
+                            if (previous != null) {
+                                ctx.messager().printMessage(Diagnostic.Kind.ERROR,
+                                        "Configuration file '" + fileName + "' is already used by " + previous, element);
+                                continue;
+                            }
+
+                            final var identifier = ConfigurateIdentifiers.toIdentifier(fileName);
+                            final var conflict = identifiers.putIfAbsent(identifier, element);
+                            if (conflict != null) {
+                                ctx.messager().printMessage(Diagnostic.Kind.ERROR,
+                                        "Configuration file '" + fileName + "' maps to the same generated name as " + conflict,
+                                        element);
+                                continue;
+                            }
 
                             builder.append(block
-                                    .replace("<CONFIG_NAME>", fileName)
+                                    .replace("<CONFIG_IDENTIFIER>", identifier)
+                                    .replace("<CONFIG_NAME>", escapeJavaString(fileName))
                                     .replace("<CONFIG_OBJECT>", element.toString())
                             ).append(System.lineSeparator());
                         }
@@ -79,12 +100,18 @@ public class ConfigurateAnnotationProcessor implements WinterAnnotationProcessor
                         result.append(builder);
                         lastEnd = matcher.end();
                     }
+
                     result.append(content.substring(lastEnd));
                     return result.toString();
                 })
                 .write(ctx, fullClassName);
 
         ctx.wireModule(getModulePackage(ctx) + ".ConfigurationsModule");
+    }
+
+    /** Escapes a value that is written inside a Java string literal of the generated code. */
+    private static String escapeJavaString(final String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     public String getModulePackage(final ProcessorContext context) {

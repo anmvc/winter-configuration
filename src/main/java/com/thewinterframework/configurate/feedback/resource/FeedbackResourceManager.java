@@ -7,19 +7,26 @@ import com.thewinterframework.plugin.WinterPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.spongepowered.configurate.ConfigurationNode;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FeedbackResourceManager {
 
     private static final FeedbackResourceManager INSTANCE = new FeedbackResourceManager();
 
-    private final Map<String, FeedbackProvider> providers = new HashMap<>();
+    private final Map<String, FeedbackProvider> providers = new ConcurrentHashMap<>();
 
     public static FeedbackResourceManager instance() {
         return INSTANCE;
     }
 
+    /**
+     * Registers the feedback provider of a plugin, replacing any provider registered before for the same namespace.
+     *
+     * @param plugin the plugin that provides the feedback
+     * @param node the node that contains the feedback resources
+     * @return this manager
+     */
     public FeedbackResourceManager registerProvider(final WinterPlugin plugin, final ConfigurationNode node) {
         final var namespace = plugin.namespace();
         final var provider = new FeedbackNodeProvider(node);
@@ -29,9 +36,10 @@ public class FeedbackResourceManager {
     }
 
     /**
-     * Registers a feedback provider.
+     * Unregisters the feedback provider of a plugin. Does nothing if the plugin has no registered provider.
      *
-     * @param plugin the plugin that provides the feedback
+     * @param plugin the plugin whose feedback provider is removed
+     * @return this manager
      */
     public FeedbackResourceManager unregisterProvider(final WinterPlugin plugin) {
         final var namespace = plugin.namespace();

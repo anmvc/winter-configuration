@@ -2,6 +2,7 @@ package com.thewinterframework.configurate.feedback.media.impl;
 
 import com.thewinterframework.component.ComponentUtils;
 import com.thewinterframework.configurate.feedback.media.FeedbackMedia;
+import com.thewinterframework.configurate.feedback.media.MediaNodes;
 import com.thewinterframework.configurate.feedback.media.MediaType;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
@@ -12,11 +13,21 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
-
 import java.lang.reflect.Type;
-import java.util.Objects;
 
 public record BossBarMedia(String message, float progress, Color color, Overlay overlay) implements FeedbackMedia {
+
+    /**
+     * Creates a boss bar media.
+     *
+     * @throws IllegalArgumentException if the progress is not between 0 and 1
+     */
+    public BossBarMedia {
+        if (!(progress >= 0f && progress <= 1f)) {
+            throw new IllegalArgumentException("Boss bar progress must be between 0 and 1, but was " + progress);
+        }
+    }
+
     @Override
     public void sendMedia(final Audience audience, final TagResolver... resolvers) {
         final var name = ComponentUtils.miniMessage(message, resolvers);
@@ -31,13 +42,16 @@ public record BossBarMedia(String message, float progress, Color color, Overlay 
 
     public static class BossBarMediaSerializer implements TypeSerializer<FeedbackMedia> {
         @Override
-        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) {
-            return new BossBarMedia(
-                Objects.requireNonNull(node.node("message").getString()),
-                node.node("progress").getFloat(1.0f),
-                Color.valueOf(node.node("color").getString(Color.PURPLE.name()).toUpperCase()),
-                Overlay.valueOf(node.node("overlay").getString(Overlay.PROGRESS.name()).toUpperCase())
-            );
+        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
+            final var message = MediaNodes.requiredString(node, "message", type);
+            final var progress = node.node("progress").getFloat(1.0f);
+            final var color = MediaNodes.enumValue(node, "color", Color.class, Color.PURPLE, type);
+            final var overlay = MediaNodes.enumValue(node, "overlay", Overlay.class, Overlay.PROGRESS, type);
+            try {
+                return new BossBarMedia(message, progress, color, overlay);
+            } catch (final IllegalArgumentException exception) {
+                throw new SerializationException(node.node("progress"), type, exception.getMessage());
+            }
         }
 
         @Override

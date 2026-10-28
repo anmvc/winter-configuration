@@ -2,6 +2,7 @@ package com.thewinterframework.configurate.feedback.media.impl;
 
 import com.thewinterframework.component.ComponentUtils;
 import com.thewinterframework.configurate.feedback.media.FeedbackMedia;
+import com.thewinterframework.configurate.feedback.media.MediaNodes;
 import com.thewinterframework.configurate.feedback.media.MediaType;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
@@ -12,10 +13,8 @@ import org.jetbrains.annotations.Nullable;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.serialize.SerializationException;
 import org.spongepowered.configurate.serialize.TypeSerializer;
-
 import java.lang.reflect.Type;
 import java.time.Duration;
-import java.util.Objects;
 
 public record TitleMedia(String title, @Nullable String subtitle, Duration fadeIn, Duration stay, Duration fadeOut) implements FeedbackMedia {
 
@@ -36,13 +35,13 @@ public record TitleMedia(String title, @Nullable String subtitle, Duration fadeI
     public static class TitleMediaSerializer implements TypeSerializer<FeedbackMedia> {
 
         @Override
-        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) {
+        public FeedbackMedia deserialize(final Type type, final ConfigurationNode node) throws SerializationException {
             return new TitleMedia(
-                    Objects.requireNonNull(node.node("title").getString()),
+                    MediaNodes.requiredString(node, "title", type),
                     node.node("subtitle").getString(),
-                    Duration.ofSeconds(node.node("fade-in").getLong(1)),
-                    Duration.ofSeconds(node.node("stay").getLong(1)),
-                    Duration.ofSeconds(node.node("fade-out").getLong(1))
+                    MediaNodes.seconds(node, "fade-in", 1, type),
+                    MediaNodes.seconds(node, "stay", 1, type),
+                    MediaNodes.seconds(node, "fade-out", 1, type)
             );
         }
 
@@ -55,9 +54,9 @@ public record TitleMedia(String title, @Nullable String subtitle, Duration fadeI
             node.node("type").set(MediaType.TITLE.name().toLowerCase());
             node.node("title").set(title1);
             node.node("subtitle").set(subtitle1);
-            node.node("fade-in").set(in.getSeconds());
-            node.node("stay").set(stay1.getSeconds());
-            node.node("fade-out").set(out.getSeconds());
+            node.node("fade-in").set(MediaNodes.toSeconds(in));
+            node.node("stay").set(MediaNodes.toSeconds(stay1));
+            node.node("fade-out").set(MediaNodes.toSeconds(out));
         }
     }
 }
