@@ -14,6 +14,7 @@ repositories {
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
     maven("https://repo.kryptonmc.org/releases")
     maven("https://repo.spongepowered.org/maven/")
+    maven("https://jitpack.io")
 }
 
 java {
@@ -54,8 +55,8 @@ deployer {
 
 dependencies {
     // Core
-    compileOnlyApi("com.thewinterframework:core:$winterVersion")
-    annotationProcessor("com.thewinterframework:core:$winterVersion")
+    compileOnlyApi("com.github.anmvc.winter:core:$winterVersion")
+    annotationProcessor("com.github.anmvc.winter:core:$winterVersion")
 
     annotationProcessor("com.google.auto.service:auto-service:1.1.1")
 
@@ -66,7 +67,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testImplementation("org.slf4j:slf4j-api:2.0.16")
     testImplementation("org.spongepowered:configurate-yaml:4.2.0")
-    testImplementation("com.thewinterframework:core:$winterVersion")
+    testImplementation("com.github.anmvc.winter:core:$winterVersion")
     testImplementation("net.kyori:adventure-api:5.2.0")
     testImplementation("net.kyori:adventure-text-minimessage:5.2.0")
     testImplementation("net.kyori:adventure-text-serializer-plain:5.2.0")
