@@ -68,10 +68,10 @@ dependencies {
     testImplementation("org.slf4j:slf4j-api:2.0.16")
     testImplementation("org.spongepowered:configurate-yaml:4.2.0")
     testImplementation("com.github.anmvc.winter:core:$winterVersion")
-    testImplementation("net.kyori:adventure-api:5.2.0")
-    testImplementation("net.kyori:adventure-text-minimessage:5.2.0")
-    testImplementation("net.kyori:adventure-text-serializer-plain:5.2.0")
-    testImplementation("net.kyori:adventure-text-serializer-legacy:5.2.0")
+    testImplementation("net.kyori:adventure-api:4.17.0")
+    testImplementation("net.kyori:adventure-text-minimessage:4.17.0")
+    testImplementation("net.kyori:adventure-text-serializer-plain:4.17.0")
+    testImplementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
